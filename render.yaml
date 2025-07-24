@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: house-price-predictor-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python api.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.2
+      - key: PORT
+        value: 5001 

@@ -298,7 +298,9 @@ if __name__ == '__main__':
     # Load model and data on startup
     if load_model_and_data():
         logger.info("Starting Flask API server...")
-        app.run(debug=True, host='0.0.0.0', port=5001)
+        # Use environment variable for port or default to 5001
+        port = int(os.environ.get('PORT', 5001))
+        app.run(debug=False, host='0.0.0.0', port=port)
     else:
         logger.error("Failed to load model or data. Exiting.")
         exit(1) 
