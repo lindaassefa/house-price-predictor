@@ -1,0 +1,8 @@
+#!/bin/bash
+echo "Starting House Price Predictor..."
+echo ""
+echo "1. Training model..."
+python train_model.py
+echo ""
+echo "2. Starting web application..."
+streamlit run app.py
