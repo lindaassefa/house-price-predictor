@@ -2,6 +2,8 @@
 
 A comprehensive machine learning project that predicts house prices based on various features including location, property details, and market information.
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/lindaassefa/house-price-predictor)
+
 ## 📋 Table of Contents
 
 - [Features](#features)
