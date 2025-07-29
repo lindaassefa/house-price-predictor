@@ -42,63 +42,72 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_data
-def load_data():
-    """Load the dataset"""
-    try:
-        data = pd.read_csv("cleaned_df.csv")
-        return data.dropna()
-    except FileNotFoundError:
-        st.error("Dataset not found. Please ensure 'cleaned_df.csv' is in the current directory.")
-        return None
+# API URL
+API_URL = "https://house-price-predictor-api-glew.onrender.com"
 
-@st.cache_resource
-def load_model():
-    """Load the trained model"""
+def check_api_health():
+    """Check if the API is available"""
     try:
-        model = joblib.load("house_price_model.pkl")
-        return model
-    except FileNotFoundError:
-        st.error("Model not found. Please run the training script first.")
-        return None
+        response = requests.get(f"{API_URL}/health", timeout=10)
+        return response.status_code == 200
+    except:
+        return False
 
-def predict_price(model, input_data):
-    """Make price prediction"""
+def predict_price_api(property_data):
+    """Make prediction using the API"""
     try:
-        prediction = model.predict(input_data)
-        return prediction[0]
+        response = requests.post(
+            f"{API_URL}/predict",
+            json=property_data,
+            headers={"Content-Type": "application/json"},
+            timeout=10
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"error": response.json().get("error", "Prediction failed")}
     except Exception as e:
-        st.error(f"Prediction error: {str(e)}")
+        return {"error": f"API Error: {str(e)}"}
+
+def get_data_stats():
+    """Get data statistics from API"""
+    try:
+        response = requests.get(f"{API_URL}/data/stats", timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        return None
+    except:
         return None
 
 def main():
     # Header
     st.markdown('<h1 class="main-header">🏠 House Price Predictor</h1>', unsafe_allow_html=True)
     
-    # Load data and model
-    data = load_data()
-    model = load_model()
+    # Check API health
+    if not check_api_health():
+        st.error("⚠️ API is not available. Please check the deployment status.")
+        st.info("API URL: " + API_URL)
+        return
     
-    if data is None or model is None:
-        st.stop()
+    st.success("✅ API is connected and ready!")
     
     # Sidebar for navigation
     st.sidebar.title("Navigation")
     page = st.sidebar.selectbox(
         "Choose a page",
-        ["🏠 Predict Price", "📊 Data Analysis", "📈 Model Performance", "ℹ️ About"]
+        ["🏠 Predict Price", "📊 Data Analysis", "📈 API Status", "ℹ️ About"]
     )
     
     if page == "🏠 Predict Price":
-        show_prediction_page(data, model)
+        show_prediction_page()
     elif page == "📊 Data Analysis":
-        show_analysis_page(data)
-    elif page == "📈 Model Performance":
-        show_performance_page()
+        show_analysis_page()
+    elif page == "📈 API Status":
+        show_status_page()
     elif page == "ℹ️ About":
         show_about_page()
 
-def show_prediction_page(data, model):
+def show_prediction_page():
     """Show the main prediction page"""
     st.header("Predict House Price")
     st.write("Enter the details of the house to get a price prediction.")
@@ -107,170 +116,137 @@ def show_prediction_page(data, model):
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("Location Information")
-        state = st.selectbox("State", sorted(data['State'].unique()))
-        
-        # Filter cities based on selected state
-        state_cities = data[data['State'] == state]['City'].unique()
-        city = st.selectbox("City", sorted(state_cities))
-        
-        zipcode = st.number_input("Zipcode", 
-                                 min_value=int(data['Zipcode'].min()), 
-                                 max_value=int(data['Zipcode'].max()),
-                                 value=int(data['Zipcode'].median()))
-        
-        latitude = st.number_input("Latitude", 
-                                  min_value=float(data['Latitude'].min()), 
-                                  max_value=float(data['Latitude'].max()),
-                                  value=float(data['Latitude'].median()),
-                                  format="%.6f")
-        
-        longitude = st.number_input("Longitude", 
-                                   min_value=float(data['Longitude'].min()), 
-                                   max_value=float(data['Longitude'].max()),
-                                   value=float(data['Longitude'].median()),
-                                   format="%.6f")
-    
-    with col2:
         st.subheader("Property Details")
-        bedrooms = st.slider("Number of Bedrooms", 
-                            min_value=int(data['Bedroom'].min()), 
-                            max_value=int(data['Bedroom'].max()),
-                            value=int(data['Bedroom'].median()))
         
-        bathrooms = st.slider("Number of Bathrooms", 
-                             min_value=float(data['Bathroom'].min()), 
-                             max_value=float(data['Bathroom'].max()),
-                             value=float(data['Bathroom'].median()),
-                             step=0.5)
+        # Property information
+        state = st.selectbox("State", ["CA", "NY", "TX", "FL", "IL"])
+        city = st.text_input("City", "Los Angeles")
+        street = st.text_input("Street Address", "123 Main St")
+        zipcode = st.number_input("Zipcode", min_value=10000, max_value=99999, value=90210)
         
-        area = st.number_input("Total Area (sq ft)", 
-                              min_value=float(data['Area'].min()), 
-                              max_value=float(data['Area'].max()),
-                              value=float(data['Area'].median()))
+        # Property features
+        bedrooms = st.slider("Bedrooms", 1, 10, 3)
+        bathrooms = st.slider("Bathrooms", 1.0, 10.0, 2.5, 0.5)
+        area = st.number_input("Area (sq ft)", min_value=100, max_value=10000, value=2000)
+        lot_area = st.number_input("Lot Area", min_value=100, max_value=1000, value=500)
         
-        lot_area = st.number_input("Lot Area (sq ft)", 
-                                  min_value=float(data['LotArea'].min()), 
-                                  max_value=float(data['LotArea'].max()),
-                                  value=float(data['LotArea'].median()))
+    with col2:
+        st.subheader("Market Information")
         
-        ppsq = st.number_input("Price per Square Foot", 
-                              min_value=float(data['PPSq'].min()), 
-                              max_value=float(data['PPSq'].max()),
-                              value=float(data['PPSq'].median()))
+        market_estimate = st.number_input("Market Estimate ($)", min_value=100000, max_value=5000000, value=1000000)
+        rent_estimate = st.number_input("Rent Estimate ($/month)", min_value=500, max_value=10000, value=3000)
+        
+        # Optional coordinates
+        st.subheader("Location (Optional)")
+        use_coordinates = st.checkbox("Include coordinates")
+        
+        if use_coordinates:
+            lat = st.number_input("Latitude", min_value=25.0, max_value=50.0, value=34.0522, format="%.4f")
+            lon = st.number_input("Longitude", min_value=-125.0, max_value=-65.0, value=-118.2437, format="%.4f")
+        else:
+            lat = 0.0
+            lon = 0.0
     
-    # Additional features
-    st.subheader("Additional Information")
-    col3, col4 = st.columns(2)
-    
-    with col3:
-        market_estimate = st.number_input("Market Estimate", 
-                                         min_value=float(data['MarketEstimate'].min()), 
-                                         max_value=float(data['MarketEstimate'].max()),
-                                         value=float(data['MarketEstimate'].median()))
-        
-        rent_estimate = st.number_input("Rent Estimate", 
-                                       min_value=float(data['RentEstimate'].min()), 
-                                       max_value=float(data['RentEstimate'].max()),
-                                       value=float(data['RentEstimate'].median()))
-    
-    with col4:
-        street = st.text_input("Street Address", value="Sample Street")
+    # Calculate price per sq ft automatically
+    ppsq = market_estimate / area if area > 0 else 500
     
     # Prediction button
     if st.button("🚀 Predict Price", type="primary"):
         with st.spinner("Making prediction..."):
-            # Create input dataframe
-            input_data = pd.DataFrame({
-                'State': [state],
-                'City': [city],
-                'Street': [street],
-                'Zipcode': [zipcode],
-                'Bedroom': [bedrooms],
-                'Bathroom': [bathrooms],
-                'Area': [area],
-                'PPSq': [ppsq],
-                'LotArea': [lot_area],
-                'MarketEstimate': [market_estimate],
-                'RentEstimate': [rent_estimate],
-                'Latitude': [latitude],
-                'Longitude': [longitude]
-            })
+            # Prepare input data for API
+            property_data = {
+                'State': state,
+                'City': city,
+                'Street': street,
+                'Zipcode': int(zipcode),
+                'Bedroom': int(bedrooms),
+                'Bathroom': float(bathrooms),
+                'Area': float(area),
+                'PPSq': float(ppsq),  # Calculated automatically
+                'LotArea': float(lot_area),
+                'MarketEstimate': float(market_estimate),
+                'RentEstimate': float(rent_estimate),
+                'Latitude': float(lat),
+                'Longitude': float(lon)
+            }
             
-            # Make prediction
-            prediction = predict_price(model, input_data)
+            # Make prediction using API
+            result = predict_price_api(property_data)
             
-            if prediction is not None:
+            if "error" in result:
+                st.error(f"❌ {result['error']}")
+            else:
+                prediction = result["prediction"]
+                confidence = result["confidence_interval"]
+                
                 # Display prediction
                 st.markdown('<div class="prediction-box">', unsafe_allow_html=True)
                 st.markdown(f"### Predicted House Price")
                 st.markdown(f"## ${prediction:,.2f}")
                 st.markdown("</div>", unsafe_allow_html=True)
                 
-                # Show confidence interval (simplified)
-                confidence_range = prediction * 0.1  # 10% range
-                st.info(f"Estimated range: ${prediction - confidence_range:,.2f} - ${prediction + confidence_range:,.2f}")
+                # Show confidence interval from API
+                st.info(f"Estimated range: ${confidence['lower']:,.2f} - ${confidence['upper']:,.2f}")
                 
-                # Show similar properties
-                st.subheader("Similar Properties in the Area")
-                similar_properties = data[
-                    (data['State'] == state) & 
-                    (data['City'] == city) &
-                    (data['Bedroom'] == bedrooms)
-                ].head(5)
+                # Show calculated price per sq ft
+                st.success(f"💰 Calculated Price per sq ft: ${ppsq:.0f}")
                 
-                if not similar_properties.empty:
-                    for idx, prop in similar_properties.iterrows():
-                        st.write(f"📍 {prop['Street']} - ${prop['ListedPrice']:,.2f} ({prop['Bedroom']} bed, {prop['Bathroom']} bath, {prop['Area']:,.0f} sq ft)")
+                # Show input data
+                with st.expander("📋 Input Data"):
+                    st.json(property_data)
 
-def show_analysis_page(data):
+def show_analysis_page():
     """Show data analysis page"""
     st.header("📊 Data Analysis")
     
-    # Summary statistics
-    st.subheader("Dataset Overview")
-    col1, col2, col3, col4 = st.columns(4)
+    stats = get_data_stats()
     
-    with col1:
-        st.metric("Total Properties", f"{len(data):,}")
-    with col2:
-        st.metric("Average Price", f"${data['ListedPrice'].mean():,.2f}")
-    with col3:
-        st.metric("Median Price", f"${data['ListedPrice'].median():,.2f}")
-    with col4:
-        st.metric("Price Range", f"${data['ListedPrice'].min():,.0f} - ${data['ListedPrice'].max():,.0f}")
-    
-    # Price distribution
-    st.subheader("Price Distribution")
-    fig = px.histogram(data, x='ListedPrice', nbins=50, 
-                      title="Distribution of House Prices",
-                      labels={'ListedPrice': 'Price ($)', 'count': 'Number of Properties'})
-    fig.update_layout(showlegend=False)
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Price vs Area
-    st.subheader("Price vs Area Relationship")
-    fig = px.scatter(data, x='Area', y='ListedPrice', 
-                    title="House Price vs Total Area",
-                    labels={'Area': 'Total Area (sq ft)', 'ListedPrice': 'Price ($)'})
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Price by number of bedrooms
-    st.subheader("Average Price by Number of Bedrooms")
-    bedroom_prices = data.groupby('Bedroom')['ListedPrice'].mean().reset_index()
-    fig = px.bar(bedroom_prices, x='Bedroom', y='ListedPrice',
-                title="Average Price by Number of Bedrooms",
-                labels={'Bedroom': 'Number of Bedrooms', 'ListedPrice': 'Average Price ($)'})
-    st.plotly_chart(fig, use_container_width=True)
-    
-    # Geographic distribution
-    st.subheader("Geographic Distribution")
-    fig = px.scatter_mapbox(data, lat='Latitude', lon='Longitude', 
-                           color='ListedPrice', size='Area',
-                           hover_data=['State', 'City', 'Bedroom', 'Bathroom'],
-                           title="House Locations and Prices",
-                           mapbox_style="open-street-map")
-    st.plotly_chart(fig, use_container_width=True)
+    if stats:
+        # Summary statistics
+        st.subheader("Dataset Overview")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Total Properties", f"{stats['total_properties']:,}")
+        with col2:
+            st.metric("Average Price", f"${stats['price_stats']['mean']:,.2f}")
+        with col3:
+            st.metric("Median Price", f"${stats['price_stats']['median']:,.2f}")
+        with col4:
+            st.metric("Price Range", f"${stats['price_stats']['min']:,.0f} - ${stats['price_stats']['max']:,.0f}")
+        
+        # Price distribution chart
+        st.subheader("💰 Price Distribution")
+        price_data = {
+            "Metric": ["Mean", "Median", "Min", "Max"],
+            "Price": [stats['price_stats']['mean'], stats['price_stats']['median'], stats['price_stats']['min'], stats['price_stats']['max']]
+        }
+        
+        fig = px.bar(
+            pd.DataFrame(price_data),
+            x="Metric",
+            y="Price",
+            title="Price Statistics",
+            color="Price",
+            color_continuous_scale="viridis"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Property statistics
+        st.subheader("🏠 Property Statistics")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("Number of States", len(stats["states"]))
+            st.metric("Number of Cities", stats["cities_count"])
+        
+        with col2:
+            bedroom_stats = stats["bedroom_stats"]
+            st.metric("Bedroom Range", f"{bedroom_stats['min']} - {bedroom_stats['max']}")
+            st.metric("Unique Bedroom Counts", len(bedroom_stats['unique_values']))
+        
+    else:
+        st.error("❌ Could not fetch data statistics")
 
 def show_performance_page():
     """Show model performance page"""
@@ -291,6 +267,44 @@ def show_performance_page():
     - **R² Score**: Indicates how well the model explains the variance in house prices
     - **Root Mean Squared Error (RMSE)**: Square root of MSE, in the same units as the target variable
     """)
+
+def show_status_page():
+    """Show API status page"""
+    st.header("📈 API Status")
+    
+    # Health check
+    health_response = requests.get(f"{API_URL}/health", timeout=10)
+    
+    if health_response.status_code == 200:
+        health_data = health_response.json()
+        
+        st.success("✅ API is Healthy")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("Status", health_data["status"])
+            st.metric("Model Loaded", "✅" if health_data["model_loaded"] else "❌")
+        
+        with col2:
+            st.metric("Data Loaded", "✅" if health_data["data_loaded"] else "❌")
+            st.metric("Timestamp", health_data["timestamp"])
+        
+        # API endpoints
+        st.subheader("🔗 Available Endpoints")
+        endpoints = [
+            {"Method": "GET", "Endpoint": "/", "Description": "API Information"},
+            {"Method": "GET", "Endpoint": "/health", "Description": "Health Check"},
+            {"Method": "POST", "Endpoint": "/predict", "Description": "Single Prediction"},
+            {"Method": "POST", "Endpoint": "/predict/batch", "Description": "Batch Prediction"},
+            {"Method": "GET", "Endpoint": "/data/stats", "Description": "Data Statistics"},
+            {"Method": "GET", "Endpoint": "/data/cities/<state>", "Description": "Cities by State"}
+        ]
+        
+        st.table(pd.DataFrame(endpoints))
+        
+    else:
+        st.error("❌ API is not responding")
 
 def show_about_page():
     """Show about page"""
