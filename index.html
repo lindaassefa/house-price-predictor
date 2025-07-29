@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏠 House Price Predictor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .form-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .form-section h3 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .predict-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.3s;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .predict-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .predict-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result {
+            margin-top: 30px;
+            padding: 25px;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .result-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .result-card h4 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+        
+        .result-card .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .api-status {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .api-status.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        .api-status.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏠 House Price Predictor</h1>
+            <p>Predict house prices using machine learning</p>
+        </div>
+        
+        <div class="content">
+            <div id="api-status" class="api-status">
+                Checking API status...
+            </div>
+            
+            <form id="prediction-form">
+                <div class="form-grid">
+                    <div class="form-section">
+                        <h3>🏠 Property Details</h3>
+                        
+                        <div class="form-group">
+                            <label for="state">State</label>
+                            <select id="state" required>
+                                <option value="CA">California (CA)</option>
+                                <option value="NY">New York (NY)</option>
+                                <option value="TX">Texas (TX)</option>
+                                <option value="FL">Florida (FL)</option>
+                                <option value="IL">Illinois (IL)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="city">City</label>
+                            <input type="text" id="city" value="Los Angeles" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="street">Street Address</label>
+                            <input type="text" id="street" value="123 Main St" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="zipcode">Zipcode</label>
+                            <input type="number" id="zipcode" value="90210" min="10000" max="99999" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="bedrooms">Bedrooms</label>
+                            <input type="number" id="bedrooms" value="3" min="1" max="10" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="bathrooms">Bathrooms</label>
+                            <input type="number" id="bathrooms" value="2.5" min="1" max="10" step="0.5" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="area">Area (sq ft)</label>
+                            <input type="number" id="area" value="2000" min="100" max="10000" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>💰 Market Information</h3>
+                        
+                        <div class="form-group">
+                            <label for="ppsq">Price per sq ft</label>
+                            <input type="number" id="ppsq" value="500" min="50" max="2000" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="lot-area">Lot Area</label>
+                            <input type="number" id="lot-area" value="500" min="100" max="1000" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="market-estimate">Market Estimate ($)</label>
+                            <input type="number" id="market-estimate" value="1000000" min="100000" max="5000000" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="rent-estimate">Rent Estimate ($/month)</label>
+                            <input type="number" id="rent-estimate" value="3000" min="500" max="10000" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="use-coordinates"> Include coordinates (optional)
+                            </label>
+                        </div>
+                        
+                        <div id="coordinates-section" style="display: none;">
+                            <div class="form-group">
+                                <label for="latitude">Latitude</label>
+                                <input type="number" id="latitude" value="34.0522" min="25" max="50" step="0.0001">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="longitude">Longitude</label>
+                                <input type="number" id="longitude" value="-118.2437" min="-125" max="-65" step="0.0001">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="predict-btn" id="predict-btn">
+                    🚀 Predict Price
+                </button>
+            </form>
+            
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Making prediction...</p>
+            </div>
+            
+            <div id="result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://house-price-predictor-api-glew.onrender.com';
+        
+        // Check API status on load
+        window.addEventListener('load', checkApiStatus);
+        
+        // Toggle coordinates section
+        document.getElementById('use-coordinates').addEventListener('change', function() {
+            const coordinatesSection = document.getElementById('coordinates-section');
+            coordinatesSection.style.display = this.checked ? 'block' : 'none';
+        });
+        
+        // Form submission
+        document.getElementById('prediction-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const predictBtn = document.getElementById('predict-btn');
+            
+            // Show loading
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            predictBtn.disabled = true;
+            
+            try {
+                const formData = {
+                    State: document.getElementById('state').value,
+                    City: document.getElementById('city').value,
+                    Street: document.getElementById('street').value,
+                    Zipcode: parseInt(document.getElementById('zipcode').value),
+                    Bedroom: parseInt(document.getElementById('bedrooms').value),
+                    Bathroom: parseFloat(document.getElementById('bathrooms').value),
+                    Area: parseFloat(document.getElementById('area').value),
+                    PPSq: parseFloat(document.getElementById('ppsq').value),
+                    LotArea: parseFloat(document.getElementById('lot-area').value),
+                    MarketEstimate: parseFloat(document.getElementById('market-estimate').value),
+                    RentEstimate: parseFloat(document.getElementById('rent-estimate').value)
+                };
+                
+                // Add coordinates if enabled
+                if (document.getElementById('use-coordinates').checked) {
+                    formData.Latitude = parseFloat(document.getElementById('latitude').value);
+                    formData.Longitude = parseFloat(document.getElementById('longitude').value);
+                }
+                
+                const response = await fetch(`${API_URL}/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(data, 'success');
+                } else {
+                    showResult({ error: data.error || 'Prediction failed' }, 'error');
+                }
+                
+            } catch (error) {
+                showResult({ error: 'Network error: ' + error.message }, 'error');
+            } finally {
+                loading.style.display = 'none';
+                predictBtn.disabled = false;
+            }
+        });
+        
+        function showResult(data, type) {
+            const result = document.getElementById('result');
+            
+            if (type === 'success') {
+                const prediction = data.prediction;
+                const confidence = data.confidence_interval;
+                
+                result.innerHTML = `
+                    <h3>✅ Prediction Completed!</h3>
+                    <div class="result-grid">
+                        <div class="result-card">
+                            <h4>Predicted Price</h4>
+                            <div class="value">$${prediction.toLocaleString()}</div>
+                        </div>
+                        <div class="result-card">
+                            <h4>Confidence Lower</h4>
+                            <div class="value">$${confidence.lower.toLocaleString()}</div>
+                        </div>
+                        <div class="result-card">
+                            <h4>Confidence Upper</h4>
+                            <div class="value">$${confidence.upper.toLocaleString()}</div>
+                        </div>
+                    </div>
+                    <details style="margin-top: 20px;">
+                        <summary>📋 Input Data</summary>
+                        <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 10px;">${JSON.stringify(data.input_data, null, 2)}</pre>
+                    </details>
+                `;
+            } else {
+                result.innerHTML = `
+                    <h3>❌ Error</h3>
+                    <p>${data.error}</p>
+                `;
+            }
+            
+            result.className = `result ${type}`;
+            result.style.display = 'block';
+        }
+        
+        async function checkApiStatus() {
+            const statusDiv = document.getElementById('api-status');
+            
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (response.ok) {
+                    statusDiv.innerHTML = '✅ API is connected and ready!';
+                    statusDiv.className = 'api-status success';
+                } else {
+                    throw new Error('API not responding');
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '❌ API is not available. Please check the deployment status.';
+                statusDiv.className = 'api-status error';
+            }
+        }
+    </script>
+</body>
+</html> 
