@@ -99,6 +99,24 @@ def validate_input(input_data):
     except Exception as e:
         return False, f"Validation error: {str(e)}"
 
+@app.route('/', methods=['GET'])
+def root():
+    """Root endpoint with API information"""
+    return jsonify({
+        'message': '🏠 House Price Predictor API',
+        'version': '1.0.0',
+        'status': 'active',
+        'endpoints': {
+            'health': '/health',
+            'predict': '/predict',
+            'batch_predict': '/predict/batch',
+            'data_stats': '/data/stats',
+            'cities_by_state': '/data/cities/<state>'
+        },
+        'documentation': 'https://github.com/lindaassefa/house-price-predictor',
+        'timestamp': datetime.now().isoformat()
+    })
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
