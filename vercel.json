@@ -2,17 +2,30 @@
   "version": 2,
   "builds": [
     {
+      "src": "api.py",
+      "use": "@vercel/python"
+    },
+    {
       "src": "index.html",
       "use": "@vercel/static"
     }
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "/api.py"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
   ],
   "env": {
-    "API_URL": "https://house-price-predictor-api-glew.onrender.com"
+    "PORT": "8080",
+    "PYTHON_VERSION": "3.12.2",
+    "MODEL_PATH": "./house_price_model.pkl",
+    "DATA_PATH": "./house_data.csv",
+    "DEBUG": "False",
+    "LOG_LEVEL": "INFO"
   }
 } 
