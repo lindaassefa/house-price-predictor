@@ -360,11 +360,25 @@
                     RentEstimate: parseFloat(document.getElementById('rent-estimate').value)
                 };
                 
+                // Ensure all numeric values are properly typed
+                formData.Zipcode = Number(formData.Zipcode);
+                formData.Bedroom = Number(formData.Bedroom);
+                formData.Bathroom = Number(formData.Bathroom);
+                formData.Area = Number(formData.Area);
+                formData.PPSq = Number(formData.PPSq);
+                formData.LotArea = Number(formData.LotArea);
+                formData.MarketEstimate = Number(formData.MarketEstimate);
+                formData.RentEstimate = Number(formData.RentEstimate);
+                
                 // Add coordinates if enabled
                 if (document.getElementById('use-coordinates').checked) {
                     formData.Latitude = parseFloat(document.getElementById('latitude').value);
                     formData.Longitude = parseFloat(document.getElementById('longitude').value);
                 }
+                
+                // Debug: Log the data being sent
+                console.log('Sending data:', formData);
+                console.log('Bathroom type:', typeof formData.Bathroom, 'Value:', formData.Bathroom);
                 
                 const response = await fetch(`${API_URL}/predict`, {
                     method: 'POST',

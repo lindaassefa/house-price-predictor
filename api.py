@@ -81,8 +81,17 @@ def validate_input(input_data):
         
         for field, (data_type, min_val, max_val) in numerical_fields.items():
             value = input_data[field]
-            if not isinstance(value, data_type):
+            
+            # Try to convert to the expected type
+            try:
+                if data_type == int:
+                    value = int(value)
+                elif data_type == float:
+                    value = float(value)
+                input_data[field] = value
+            except (ValueError, TypeError):
                 return False, f"Field {field} must be {data_type.__name__}"
+            
             if value < min_val or value > max_val:
                 return False, f"Field {field} must be between {min_val} and {max_val}"
         
