@@ -321,9 +321,7 @@
     </div>
 
     <script>
-        const API_URL = window.location.hostname === 'localhost' 
-      ? 'http://localhost:5001' 
-      : `${window.location.protocol}//${window.location.host}/api`;
+        const API_URL = 'https://house-price-predictor-api-glew.onrender.com';
         
         // Check API status on load
         window.addEventListener('load', checkApiStatus);
